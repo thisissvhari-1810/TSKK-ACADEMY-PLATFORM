@@ -15,6 +15,7 @@ import { verifyStudentQrPayload } from '@common/utils/qr.util';
 import type { EnvVars } from '@config/env.validation';
 import type { AuthenticatedRequest, AuthenticatedUser } from '@common/types/authenticated-request';
 import type {
+  BranchBulkMarkInput,
   BulkMarkInput,
   CreateHolidayInput,
   ListAttendanceQuery,
@@ -148,6 +149,125 @@ export class AttendanceService {
       after: { batchId: input.batchId, date, count: rows.length },
     });
     return { recorded: rows.length, rows };
+  }
+
+  // ── Bulk mark for a whole branch (no specific batch) ─────────────────────
+  async branchBulkMark(academyId: string, input: BranchBulkMarkInput, req: AuthenticatedRequest) {
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: input.branchId, academyId, isActive: true },
+    });
+    if (!branch) throw new NotFoundException('Active branch not found');
+
+    const date = truncateToDate(input.date);
+    const studentIds = input.entries.map((e) => e.studentId);
+
+    // Only allow marking active, non-deleted students that actually belong to this branch.
+    const students = await this.prisma.student.findMany({
+      where: {
+        id: { in: studentIds },
+        academyId,
+        branchId: input.branchId,
+        deletedAt: null,
+      },
+      select: { id: true },
+    });
+    const allowedIds = new Set(students.map((s) => s.id));
+    const filteredEntries = input.entries.filter((e) => allowedIds.has(e.studentId));
+    if (filteredEntries.length === 0) {
+      return { recorded: 0, updated: 0, created: 0, rows: [] };
+    }
+
+    // Find existing "branch-level" (batchId=null) attendance rows for these students on this date.
+    const existing = await this.prisma.attendance.findMany({
+      where: {
+        academyId,
+        date,
+        batchId: null,
+        studentId: { in: filteredEntries.map((e) => e.studentId) },
+      },
+      select: { id: true, studentId: true },
+    });
+    const existingByStudent = new Map(existing.map((r) => [r.studentId, r.id]));
+
+    const method = input.method ?? AttendanceMethod.MANUAL;
+    const markedById = req.user?.id;
+
+    const ops = filteredEntries.map((e) => {
+      const existingId = existingByStudent.get(e.studentId);
+      if (existingId) {
+        return this.prisma.attendance.update({
+          where: { id: existingId },
+          data: { status: e.status, notes: e.notes, method, markedById, branchId: input.branchId },
+        });
+      }
+      return this.prisma.attendance.create({
+        data: {
+          academyId,
+          studentId: e.studentId,
+          branchId: input.branchId,
+          batchId: null,
+          date,
+          status: e.status,
+          method,
+          notes: e.notes,
+          markedById,
+        },
+      });
+    });
+
+    const rows = await this.prisma.$transaction(ops);
+    const created = rows.length - existingByStudent.size;
+    const updated = existingByStudent.size;
+
+    await this.audit.fromRequest(req, 'CREATE', 'Attendance', input.branchId, {
+      after: { branchId: input.branchId, date, count: rows.length, created, updated },
+    });
+    return { recorded: rows.length, created, updated, rows };
+  }
+
+  // ── Roster for a branch on a specific date (for the tick-mark UI) ────────
+  async branchRoster(academyId: string, branchId: string, dateInput: Date) {
+    const branch = await this.prisma.branch.findFirst({
+      where: { id: branchId, academyId },
+      select: { id: true, code: true, name: true },
+    });
+    if (!branch) throw new NotFoundException('Branch not found');
+
+    const date = truncateToDate(dateInput);
+    const [students, existing] = await Promise.all([
+      this.prisma.student.findMany({
+        where: { academyId, branchId, deletedAt: null, status: 'ACTIVE' },
+        orderBy: [{ studentCode: 'asc' }],
+        select: {
+          id: true,
+          studentCode: true,
+          firstName: true,
+          lastName: true,
+          currentBelt: true,
+        },
+      }),
+      this.prisma.attendance.findMany({
+        where: { academyId, branchId, batchId: null, date },
+        select: { id: true, studentId: true, status: true },
+      }),
+    ]);
+
+    const existingByStudent = new Map(existing.map((r) => [r.studentId, r]));
+    const entries = students.map((s) => ({
+      studentId: s.id,
+      studentCode: s.studentCode,
+      studentName: `${s.firstName} ${s.lastName}`.trim(),
+      currentBelt: s.currentBelt,
+      status: existingByStudent.get(s.id)?.status ?? null,
+      attendanceId: existingByStudent.get(s.id)?.id ?? null,
+    }));
+
+    const stats = entries.reduce<Record<string, number>>((acc, e) => {
+      const key = e.status ?? 'UNMARKED';
+      acc[key] = (acc[key] ?? 0) + 1;
+      return acc;
+    }, {});
+    return { branch, date, entries, stats };
   }
 
   // ── Query / list ─────────────────────────────────────────────────────────

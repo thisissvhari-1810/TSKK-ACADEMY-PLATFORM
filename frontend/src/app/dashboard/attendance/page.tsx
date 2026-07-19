@@ -1,75 +1,149 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { CalendarDays, ClipboardList, LayoutList, QrCode, Search } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  Building2,
+  CalendarDays,
+  CheckCheck,
+  CheckCircle2,
+  ClipboardList,
+  History,
+  LayoutList,
+  QrCode,
+  Save,
+  Users,
+  XCircle,
+} from 'lucide-react';
+import { toast } from 'sonner';
 
-import { apiListRequest } from '@/lib/api-client';
-import { useDebouncedValue } from '@/lib/hooks';
+import { apiRequest, extractErrorMessage } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Field, FormGrid } from '@/components/forms/field';
+import { BranchSelect } from '@/components/forms/branch-select';
 import { EmptyState } from '@/components/data/empty-state';
-import { PaginationBar } from '@/components/data/pagination-bar';
-import { DeleteRowButton } from '@/components/data/delete-row-button';
-import { formatDateTime } from '@/lib/utils';
 
-interface AttendanceRow {
-  id: string;
-  date: string;
-  status: 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED' | 'HOLIDAY' | 'LEAVE';
-  method: 'QR' | 'MANUAL' | 'BATCH' | 'FACE_RECOGNITION';
-  checkInAt: string | null;
-  student: { id: string; studentCode: string; firstName: string; lastName: string };
-  batch?: { id: string; name: string } | null;
+type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'EXCUSED';
+
+interface RosterEntry {
+  studentId: string;
+  studentCode: string;
+  studentName: string;
+  currentBelt: string;
+  status: AttendanceStatus | null;
+  attendanceId: string | null;
 }
 
-const STATUS_VARIANT: Record<AttendanceRow['status'], 'success' | 'destructive' | 'warning' | 'info' | 'muted'> = {
+interface RosterResponse {
+  branch: { id: string; code: string; name: string };
+  date: string;
+  entries: RosterEntry[];
+  stats: Record<string, number>;
+}
+
+const STATUS_BADGE: Record<AttendanceStatus, 'success' | 'destructive' | 'warning' | 'info'> = {
   PRESENT: 'success',
-  LATE: 'warning',
   ABSENT: 'destructive',
+  LATE: 'warning',
   EXCUSED: 'info',
-  HOLIDAY: 'muted',
-  LEAVE: 'muted',
 };
 
 export default function AttendancePage() {
-  const [search, setSearch] = useState('');
-  const [page, setPage] = useState(1);
-  const [status, setStatus] = useState<string>('');
-  const pageSize = 20;
-  const debounced = useDebouncedValue(search, 300);
+  const [branchId, setBranchId] = useState<string | null>(null);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [selections, setSelections] = useState<Record<string, AttendanceStatus>>({});
+  const qc = useQueryClient();
 
-  useEffect(() => setPage(1), [debounced, status]);
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['attendance', debounced, status, page],
+  const roster = useQuery<RosterResponse>({
+    queryKey: ['branch-roster', branchId, date],
     queryFn: () =>
-      apiListRequest<AttendanceRow>({
+      apiRequest<RosterResponse>({
         method: 'GET',
-        url: '/attendance',
-        params: {
-          page,
-          pageSize,
-          search: debounced || undefined,
-          status: status || undefined,
-        },
+        url: `/attendance/branches/${branchId}/roster`,
+        params: { date },
       }),
+    enabled: Boolean(branchId && date),
   });
-  const rows = data?.items ?? [];
+
+  // Seed local selections from the fetched roster. Rows with no existing
+  // attendance default to PRESENT so a busy front-desk can just save.
+  useEffect(() => {
+    if (!roster.data) return;
+    const seed: Record<string, AttendanceStatus> = {};
+    for (const e of roster.data.entries) {
+      seed[e.studentId] = (e.status as AttendanceStatus) ?? 'PRESENT';
+    }
+    setSelections(seed);
+  }, [roster.data]);
+
+  const save = useMutation({
+    mutationFn: () => {
+      if (!branchId) throw new Error('Pick a branch first');
+      const entries = Object.entries(selections).map(([studentId, status]) => ({
+        studentId,
+        status,
+      }));
+      if (entries.length === 0) throw new Error('No students to save');
+      return apiRequest({
+        method: 'POST',
+        url: '/attendance/branch-bulk',
+        data: {
+          branchId,
+          date: new Date(`${date}T00:00:00.000Z`).toISOString(),
+          entries,
+        },
+      });
+    },
+    onSuccess: (res: unknown) => {
+      const { created = 0, updated = 0 } =
+        (res as { created?: number; updated?: number } | undefined) ?? {};
+      toast.success(
+        created + updated === 0
+          ? 'Attendance saved'
+          : `Saved · ${created} new, ${updated} updated`,
+      );
+      roster.refetch();
+      qc.invalidateQueries({ queryKey: ['attendance'] });
+    },
+    onError: (err) => toast.error(extractErrorMessage(err, 'Failed to save attendance')),
+  });
+
+  const setAll = (status: AttendanceStatus) => {
+    if (!roster.data) return;
+    const next: Record<string, AttendanceStatus> = {};
+    for (const e of roster.data.entries) next[e.studentId] = status;
+    setSelections(next);
+  };
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { PRESENT: 0, ABSENT: 0, LATE: 0, EXCUSED: 0 };
+    for (const s of Object.values(selections)) c[s] = (c[s] ?? 0) + 1;
+    return c;
+  }, [selections]);
+
+  const entries = roster.data?.entries ?? [];
+  const total = entries.length;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Attendance</h1>
-          <p className="text-sm text-muted-foreground">Manual entries, batch marks and QR scans.</p>
+          <p className="text-sm text-muted-foreground">
+            Pick a branch, then tick each student present or absent for the day.
+          </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Button asChild variant="outline">
+            <Link href="/dashboard/attendance/records">
+              <History className="h-4 w-4" /> Records
+            </Link>
+          </Button>
           <Button asChild variant="outline">
             <Link href="/dashboard/attendance/holidays">
               <CalendarDays className="h-4 w-4" /> Holidays
@@ -81,11 +155,11 @@ export default function AttendancePage() {
             </Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/dashboard/attendance/manual">
-              <ClipboardList className="h-4 w-4" /> Mark attendance
+            <Link href="/dashboard/attendance/new">
+              <ClipboardList className="h-4 w-4" /> Individual
             </Link>
           </Button>
-          <Button asChild>
+          <Button asChild variant="outline">
             <Link href="/dashboard/attendance/scan">
               <QrCode className="h-4 w-4" /> Scan QR
             </Link>
@@ -93,103 +167,195 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="relative min-w-[240px] flex-1 max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            className="pl-9"
-            placeholder="Search…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-        <select
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="">All statuses</option>
-          {(['PRESENT', 'LATE', 'ABSENT', 'EXCUSED', 'LEAVE', 'HOLIDAY'] as const).map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <Card className="overflow-hidden">
-        {isLoading ? (
-          <div className="space-y-2 p-4">
-            {Array.from({ length: 6 }).map((_, i) => (
-              <Skeleton key={i} className="h-12 w-full" />
-            ))}
-          </div>
-        ) : rows.length === 0 ? (
-          <EmptyState
-            icon={ClipboardList}
-            title="No attendance records yet"
-            description="Once you start scanning QR codes or marking attendance, it will show up here."
-          />
-        ) : (
-          <>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Date</TableHead>
-                  <TableHead>Student</TableHead>
-                  <TableHead>Batch</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Method</TableHead>
-                  <TableHead>Check-in</TableHead>
-                  <TableHead className="text-right"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {rows.map((r) => (
-                  <TableRow key={r.id}>
-                    <TableCell className="whitespace-nowrap">{formatDateTime(r.date)}</TableCell>
-                    <TableCell>
-                      <div className="font-medium">
-                        {r.student.firstName} {r.student.lastName}
-                      </div>
-                      <div className="text-xs font-mono text-muted-foreground">
-                        {r.student.studentCode}
-                      </div>
-                    </TableCell>
-                    <TableCell>{r.batch?.name ?? '—'}</TableCell>
-                    <TableCell>
-                      <Badge variant={STATUS_VARIANT[r.status]}>{r.status}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono text-xs">
-                        {r.method}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {r.checkInAt ? formatDateTime(r.checkInAt) : '—'}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DeleteRowButton
-                        url={`/attendance/${r.id}`}
-                        entity="attendance record"
-                        name={`${r.student.firstName} ${r.student.lastName} · ${formatDateTime(r.date)}`}
-                        invalidateKeys={[['attendance']]}
-                        iconOnly
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-            <PaginationBar
-              page={data?.meta.page ?? page}
-              pageSize={data?.meta.pageSize ?? pageSize}
-              total={data?.meta.total ?? 0}
-              onPage={setPage}
-            />
-          </>
-        )}
+      <Card>
+        <CardContent className="pt-6">
+          <FormGrid>
+            <Field label="Branch" required>
+              <BranchSelect
+                value={branchId}
+                onChange={setBranchId}
+                allowClear={false}
+                placeholder="Select a branch…"
+              />
+            </Field>
+            <Field label="Date" required>
+              <div className="relative">
+                <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                />
+              </div>
+            </Field>
+          </FormGrid>
+        </CardContent>
       </Card>
+
+      {!branchId ? (
+        <Card>
+          <EmptyState
+            icon={Building2}
+            title="Choose a branch to begin"
+            description="Once you select a branch, every active student in it will appear here so you can mark them present or absent."
+          />
+        </Card>
+      ) : roster.isLoading ? (
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-14 w-full" />
+          ))}
+        </div>
+      ) : entries.length === 0 ? (
+        <Card>
+          <EmptyState
+            icon={Users}
+            title="No active students at this branch"
+            description="Add students to this branch first, then come back to record attendance."
+          />
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between gap-3">
+            <div className="space-y-1">
+              <CardTitle className="flex items-center gap-2">
+                {roster.data?.branch.code?.toUpperCase()}
+                <Badge variant="outline" className="text-xs font-normal">
+                  {total} student{total === 1 ? '' : 's'}
+                </Badge>
+              </CardTitle>
+              <div className="flex flex-wrap gap-1.5 text-xs">
+                <Badge variant="success">Present: {counts.PRESENT ?? 0}</Badge>
+                <Badge variant="destructive">Absent: {counts.ABSENT ?? 0}</Badge>
+                {(counts.LATE ?? 0) > 0 && <Badge variant="warning">Late: {counts.LATE}</Badge>}
+                {(counts.EXCUSED ?? 0) > 0 && <Badge variant="info">Excused: {counts.EXCUSED}</Badge>}
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button size="sm" variant="outline" onClick={() => setAll('PRESENT')}>
+                <CheckCheck className="h-4 w-4" /> All present
+              </Button>
+              <Button size="sm" variant="outline" onClick={() => setAll('ABSENT')}>
+                <XCircle className="h-4 w-4" /> All absent
+              </Button>
+              <Button
+                size="sm"
+                loading={save.isPending}
+                disabled={total === 0}
+                onClick={() => save.mutate()}
+              >
+                <Save className="h-4 w-4" /> Save attendance
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ul className="divide-y">
+              {entries.map((e) => {
+                const current = selections[e.studentId] ?? 'PRESENT';
+                const present = current === 'PRESENT';
+                return (
+                  <li
+                    key={e.studentId}
+                    className={
+                      'flex flex-wrap items-center justify-between gap-3 p-3 transition-colors ' +
+                      (present ? 'bg-emerald-50/60 dark:bg-emerald-950/10' : '')
+                    }
+                  >
+                    <label
+                      className="flex flex-1 cursor-pointer items-center gap-3"
+                      htmlFor={`present-${e.studentId}`}
+                    >
+                      <input
+                        id={`present-${e.studentId}`}
+                        type="checkbox"
+                        className="h-5 w-5 cursor-pointer accent-emerald-600"
+                        checked={present}
+                        onChange={(ev) =>
+                          setSelections((prev) => ({
+                            ...prev,
+                            [e.studentId]: ev.target.checked ? 'PRESENT' : 'ABSENT',
+                          }))
+                        }
+                      />
+                      <div>
+                        <p className="font-medium leading-tight">{e.studentName}</p>
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {e.studentCode} · {e.currentBelt}
+                        </p>
+                      </div>
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <StatusButton
+                        active={current === 'PRESENT'}
+                        variant="present"
+                        onClick={() =>
+                          setSelections((prev) => ({ ...prev, [e.studentId]: 'PRESENT' }))
+                        }
+                      >
+                        <CheckCircle2 className="h-4 w-4" /> Present
+                      </StatusButton>
+                      <StatusButton
+                        active={current === 'ABSENT'}
+                        variant="absent"
+                        onClick={() =>
+                          setSelections((prev) => ({ ...prev, [e.studentId]: 'ABSENT' }))
+                        }
+                      >
+                        <XCircle className="h-4 w-4" /> Absent
+                      </StatusButton>
+                      <select
+                        value={current}
+                        onChange={(ev) =>
+                          setSelections((prev) => ({
+                            ...prev,
+                            [e.studentId]: ev.target.value as AttendanceStatus,
+                          }))
+                        }
+                        className="ml-1 h-8 rounded-md border border-input bg-background px-2 text-xs"
+                        aria-label="Detailed status"
+                        title="Detailed status"
+                      >
+                        <option value="PRESENT">Present</option>
+                        <option value="ABSENT">Absent</option>
+                        <option value="LATE">Late</option>
+                        <option value="EXCUSED">Excused</option>
+                      </select>
+                      {e.status && e.status !== current && (
+                        <Badge variant={STATUS_BADGE[e.status]} className="ml-1 text-[10px]">
+                          was {e.status}
+                        </Badge>
+                      )}
+                    </div>
+                  </li>
+                );
+              })}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
     </div>
+  );
+}
+
+interface StatusButtonProps {
+  active: boolean;
+  variant: 'present' | 'absent';
+  onClick: () => void;
+  children: React.ReactNode;
+}
+
+function StatusButton({ active, variant, onClick, children }: StatusButtonProps) {
+  const base =
+    'inline-flex h-8 items-center gap-1 rounded-md border px-2 text-xs font-medium transition-colors';
+  const presentActive = 'border-emerald-600 bg-emerald-600 text-white shadow-sm';
+  const absentActive = 'border-red-600 bg-red-600 text-white shadow-sm';
+  const idle =
+    'border-input bg-background text-muted-foreground hover:border-foreground hover:text-foreground';
+  const cls = active ? (variant === 'present' ? presentActive : absentActive) : idle;
+  return (
+    <button type="button" onClick={onClick} className={base + ' ' + cls}>
+      {children}
+    </button>
   );
 }

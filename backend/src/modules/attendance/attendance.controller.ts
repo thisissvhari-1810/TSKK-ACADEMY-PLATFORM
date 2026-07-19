@@ -24,6 +24,8 @@ import { TenantGuard } from '@common/guards/tenant.guard';
 import { ApiPaginatedResponse } from '@common/decorators/api-paginated-response.decorator';
 import { ZodValidationPipe } from '@common/pipes/zod-validation.pipe';
 import {
+  BranchBulkMarkDto,
+  branchBulkMarkSchema,
   BulkMarkDto,
   bulkMarkSchema,
   CreateHolidayDto,
@@ -80,6 +82,30 @@ export class AttendanceController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.service.bulkMark(academyId, body as never, req);
+  }
+
+  @Post('branch-bulk')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.ACADEMY_ADMIN, UserRole.INSTRUCTOR, UserRole.RECEPTIONIST)
+  @Permissions('attendance.mark')
+  @ApiOperation({ summary: 'Mark present/absent for every student in a branch (upserts)' })
+  branchBulk(
+    @Tenant({ required: true }) academyId: string,
+    @Body(new ZodValidationPipe(branchBulkMarkSchema)) body: BranchBulkMarkDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.service.branchBulkMark(academyId, body as never, req);
+  }
+
+  @Get('branches/:branchId/roster')
+  @Permissions('attendance.view')
+  @ApiOperation({ summary: 'List active students in a branch with their attendance for a date' })
+  branchRoster(
+    @Tenant({ required: true }) academyId: string,
+    @Param('branchId') branchId: string,
+    @Query('date') date?: string,
+  ) {
+    const target = date ? new Date(date) : new Date();
+    return this.service.branchRoster(academyId, branchId, target);
   }
 
   @Get()

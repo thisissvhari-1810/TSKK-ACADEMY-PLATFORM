@@ -60,6 +60,29 @@ export class BulkMarkDto {
   @ApiProperty({ type: [Object] }) entries!: Array<{ studentId: string; status: AttendanceStatus; notes?: string }>;
 }
 
+export const branchBulkMarkSchema = z.object({
+  branchId: z.string().trim().min(1).max(48),
+  date: z.coerce.date(),
+  method: z.nativeEnum(AttendanceMethod).optional().default(AttendanceMethod.MANUAL),
+  entries: z
+    .array(
+      z.object({
+        studentId: z.string().trim().min(1).max(48),
+        status: z.nativeEnum(AttendanceStatus),
+        notes: z.string().trim().max(500).optional(),
+      }),
+    )
+    .min(1)
+    .max(500),
+});
+export type BranchBulkMarkInput = z.infer<typeof branchBulkMarkSchema>;
+export class BranchBulkMarkDto {
+  @ApiProperty() branchId!: string;
+  @ApiProperty({ type: String, format: 'date' }) date!: Date;
+  @ApiPropertyOptional({ enum: AttendanceMethod }) method?: AttendanceMethod;
+  @ApiProperty({ type: [Object] }) entries!: Array<{ studentId: string; status: AttendanceStatus; notes?: string }>;
+}
+
 export const listAttendanceSchema = paginationQuerySchema.extend({
   studentId: z.string().trim().min(1).max(48).optional(),
   batchId: z.string().trim().min(1).max(48).optional(),
