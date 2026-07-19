@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, CalendarDays, Plus, RotateCcw, Trash2 } from 'lucide-react';
+import { ArrowLeft, CalendarDays, Plus, RotateCcw } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { apiRequest, extractErrorMessage } from '@/lib/api-client';
@@ -13,6 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input, Textarea } from '@/components/ui/input';
 import { Field, FormGrid } from '@/components/forms/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDate } from '@/lib/utils';
 
 interface Holiday {
@@ -49,15 +50,6 @@ export default function HolidaysPage() {
       toast.success('Holiday added');
       setCreating(false);
       setForm({ name: '', date: '', isRecurring: false, description: '' });
-      qc.invalidateQueries({ queryKey: ['holidays'] });
-    },
-    onError: (err) => toast.error(extractErrorMessage(err)),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => apiRequest({ method: 'DELETE', url: `/attendance/holidays/${id}` }),
-    onSuccess: () => {
-      toast.success('Holiday removed');
       qc.invalidateQueries({ queryKey: ['holidays'] });
     },
     onError: (err) => toast.error(extractErrorMessage(err)),
@@ -136,13 +128,13 @@ export default function HolidaysPage() {
               </CardHeader>
               <CardContent className="flex justify-between text-sm">
                 <p className="text-muted-foreground">{h.description ?? '—'}</p>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => { if (window.confirm(`Delete ${h.name}?`)) remove.mutate(h.id); }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <DeleteRowButton
+                  url={`/attendance/holidays/${h.id}`}
+                  entity="holiday"
+                  name={h.name}
+                  invalidateKeys={[['holidays']]}
+                  iconOnly
+                />
               </CardContent>
             </Card>
           ))}

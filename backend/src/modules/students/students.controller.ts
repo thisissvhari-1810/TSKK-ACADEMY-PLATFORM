@@ -149,6 +149,41 @@ export class StudentsController {
     return this.service.findById(academyId, id);
   }
 
+  @Get(':id/export.pdf')
+  @Permissions('student.export')
+  @ApiOperation({ summary: 'Download a full profile PDF for one student' })
+  @ApiProduces('application/pdf')
+  async exportStudentPdf(
+    @Tenant({ required: true }) academyId: string,
+    @Param('id') id: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const { pdf, filename } = await this.service.exportStudentPdf(academyId, id);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Content-Length', pdf.length.toString());
+    res.end(pdf);
+  }
+
+  @Get(':id/export.json')
+  @Permissions('student.export')
+  @ApiOperation({ summary: 'Download a full data bundle (JSON) for one student' })
+  async exportStudentJson(
+    @Tenant({ required: true }) academyId: string,
+    @Param('id') id: string,
+    @Res({ passthrough: false }) res: Response,
+  ) {
+    const bundle = await this.service.exportStudentJson(academyId, id);
+    const student = bundle.student as { studentCode?: string; firstName?: string; lastName?: string };
+    const safeName = `${student.firstName ?? ''}_${student.lastName ?? ''}`
+      .replace(/[^A-Za-z0-9_-]+/g, '')
+      .slice(0, 60);
+    const filename = `${student.studentCode ?? 'student'}_${safeName || 'student'}.json`;
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.end(JSON.stringify(bundle, null, 2));
+  }
+
   @Patch(':id')
   @Roles(UserRole.SUPER_ADMIN, UserRole.ACADEMY_ADMIN, UserRole.RECEPTIONIST)
   @Permissions('student.update')

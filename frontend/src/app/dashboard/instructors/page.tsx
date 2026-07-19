@@ -3,6 +3,7 @@
 import { Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 interface InstructorRow {
   id: string;
@@ -45,6 +46,15 @@ export default function InstructorsPage() {
       columns={columns}
       emptyIcon={Users}
       emptyTitle="No instructors yet"
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/instructors/${r.id}`}
+          entity="instructor"
+          name={`${r.firstName} ${r.lastName} (${r.employeeCode})`}
+          invalidateKeys={[['instructors']]}
+          iconOnly
+        />
+      )}
     />
   );
 }

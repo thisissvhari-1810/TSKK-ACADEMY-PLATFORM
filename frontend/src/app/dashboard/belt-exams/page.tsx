@@ -3,6 +3,7 @@
 import { Award } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDateTime } from '@/lib/utils';
 
 interface BeltExamRow {
@@ -75,6 +76,17 @@ export default function BeltExamsPage() {
       columns={columns}
       emptyIcon={Award}
       emptyTitle="No belt exams yet"
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/belt-exams/${r.id}`}
+          entity="belt exam"
+          name={`${r.student.firstName} ${r.student.lastName} · ${r.fromBelt} → ${r.toBelt}`}
+          invalidateKeys={[['belt-exams']]}
+          iconOnly
+          disabled={r.result === 'PASSED'}
+          disabledReason="Cannot delete a passed exam (certificate already issued)"
+        />
+      )}
     />
   );
 }

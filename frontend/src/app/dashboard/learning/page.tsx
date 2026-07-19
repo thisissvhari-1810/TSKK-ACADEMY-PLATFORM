@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDate } from '@/lib/utils';
 
 interface VideoRow {
@@ -60,6 +61,15 @@ export default function LearningPage() {
         </Button>
       }
       extraParams={{ publishedOnly: false }}
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/learning/videos/${r.id}`}
+          entity="video"
+          name={r.title}
+          invalidateKeys={[['learning-videos']]}
+          iconOnly
+        />
+      )}
     />
   );
 }

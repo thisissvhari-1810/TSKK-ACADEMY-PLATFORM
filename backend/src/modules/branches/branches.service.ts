@@ -84,7 +84,41 @@ export class BranchesService {
         take: query.pageSize,
       }),
     ]);
-    return paginate(rows, query.page, query.pageSize, total);
+
+    const branchIds = rows.map((r) => r.id);
+    const [studentCounts, batchCounts] = await Promise.all([
+      branchIds.length
+        ? this.prisma.student.groupBy({
+            by: ['branchId'],
+            where: { academyId, deletedAt: null, branchId: { in: branchIds } },
+            _count: { _all: true },
+          })
+        : Promise.resolve([] as Array<{ branchId: string | null; _count: { _all: number } }>),
+      branchIds.length
+        ? this.prisma.batch.groupBy({
+            by: ['branchId'],
+            where: { academyId, branchId: { in: branchIds } },
+            _count: { _all: true },
+          })
+        : Promise.resolve([] as Array<{ branchId: string | null; _count: { _all: number } }>),
+    ]);
+
+    const studentCountMap = new Map(
+      studentCounts.filter((s) => s.branchId).map((s) => [s.branchId as string, s._count._all]),
+    );
+    const batchCountMap = new Map(
+      batchCounts.filter((s) => s.branchId).map((s) => [s.branchId as string, s._count._all]),
+    );
+
+    const enriched = rows.map((r) => ({
+      ...r,
+      _count: {
+        students: studentCountMap.get(r.id) ?? 0,
+        batches: batchCountMap.get(r.id) ?? 0,
+      },
+    }));
+
+    return paginate(enriched, query.page, query.pageSize, total);
   }
 
   async findById(academyId: string, id: string) {
@@ -92,7 +126,11 @@ export class BranchesService {
       where: { id, academyId, deletedAt: null },
     });
     if (!branch) throw new NotFoundException('Branch not found');
-    return branch;
+    const [students, batches] = await Promise.all([
+      this.prisma.student.count({ where: { academyId, branchId: id, deletedAt: null } }),
+      this.prisma.batch.count({ where: { academyId, branchId: id } }),
+    ]);
+    return { ...branch, _count: { students, batches } };
   }
 
   async update(academyId: string, id: string, input: UpdateBranchInput, req: AuthenticatedRequest) {

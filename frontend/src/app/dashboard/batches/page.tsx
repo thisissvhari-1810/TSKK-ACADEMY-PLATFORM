@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 interface BatchRow {
   id: string;
@@ -64,7 +65,16 @@ export default function BatchesPage() {
                   </CardTitle>
                   <p className="text-xs text-muted-foreground">{b.class.name}</p>
                 </div>
-                <Badge variant={b.isActive ? 'success' : 'muted'}>{b.isActive ? 'Active' : 'Paused'}</Badge>
+                <div className="flex items-center gap-1">
+                  <Badge variant={b.isActive ? 'success' : 'muted'}>{b.isActive ? 'Active' : 'Paused'}</Badge>
+                  <DeleteRowButton
+                    url={`/batches/batches/${b.id}`}
+                    entity="batch"
+                    name={b.name}
+                    invalidateKeys={[['batches']]}
+                    iconOnly
+                  />
+                </div>
               </CardHeader>
               <CardContent className="space-y-1 text-sm">
                 <p className="text-muted-foreground">

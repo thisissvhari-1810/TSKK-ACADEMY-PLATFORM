@@ -96,6 +96,42 @@ export async function apiBlobRequest(config: AxiosRequestConfig): Promise<Blob> 
   return res.data;
 }
 
+/**
+ * Trigger a browser download for a backend endpoint that returns a binary/text
+ * payload. Uses the shared axios instance so the bearer token is attached and
+ * the response is refreshed on 401.
+ *
+ *   downloadAuthedFile('/students/abc/export.pdf', 'student-abc.pdf')
+ *
+ * If `filename` is not provided we fall back to the server's
+ * Content-Disposition header, and finally to the last URL segment.
+ */
+export async function downloadAuthedFile(
+  url: string,
+  filename?: string,
+  config: AxiosRequestConfig = {},
+): Promise<void> {
+  const res = await api.request<Blob>({ ...config, method: config.method ?? 'GET', url, responseType: 'blob' });
+  const disposition = (res.headers?.['content-disposition'] as string | undefined) ?? '';
+  const match = /filename\*?=(?:UTF-8'')?["']?([^"';]+)["']?/i.exec(disposition);
+  const resolved =
+    filename ||
+    (match?.[1] ? decodeURIComponent(match[1]) : undefined) ||
+    url.split('?')[0].split('/').pop() ||
+    'download';
+
+  const blob = res.data;
+  const href = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = href;
+  a.download = resolved;
+  a.rel = 'noopener';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(href), 1000);
+}
+
 export interface PaginationMeta {
   page: number;
   pageSize: number;

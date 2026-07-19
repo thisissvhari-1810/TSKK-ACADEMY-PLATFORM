@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormGrid, FormSection } from '@/components/forms/field';
+import { BranchSelect } from '@/components/forms/branch-select';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const schema = z.object({
@@ -34,6 +35,7 @@ const schema = z.object({
   medicalConditions: z.string().optional().or(z.literal('')),
   allergies: z.string().optional().or(z.literal('')),
   notes: z.string().optional().or(z.literal('')),
+  branchId: z.string().optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -130,6 +132,13 @@ export default function EditStudentPage() {
           </Field>
           <Field label="Blood group">
             <Input {...form.register('bloodGroup')} />
+          </Field>
+          <Field label="Branch" className="sm:col-span-2">
+            <BranchSelect
+              value={form.watch('branchId') || null}
+              onChange={(v) => form.setValue('branchId', v ?? '', { shouldDirty: true })}
+              placeholder="Assign to a branch (optional)"
+            />
           </Field>
         </FormGrid>
       </FormSection>

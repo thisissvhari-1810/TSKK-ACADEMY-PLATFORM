@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>{{academyName}} — Student Profile — {{student.studentCode}}</title>
+<style>
+  @page { size: A4 portrait; margin: 14mm 14mm 18mm 14mm; }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #111827; font-size: 11px; margin: 0; }
+  header { display: flex; justify-content: space-between; align-items: center; border-bottom: 3px solid {{primaryColor}}; padding-bottom: 10px; margin-bottom: 14px; }
+  .brand h1 { margin: 0; font-size: 20px; color: {{primaryColor}}; }
+  .brand p { margin: 2px 0 0; color: #6b7280; font-size: 11px; }
+  .meta { text-align: right; color: #4b5563; font-size: 11px; line-height: 1.5; }
+  .profile-hero { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 14px; padding: 12px; background: #f9fafb; border-left: 4px solid {{primaryColor}}; border-radius: 4px; }
+  .profile-hero .photo { width: 72px; height: 72px; border-radius: 8px; background: #e5e7eb; overflow: hidden; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: #6b7280; font-size: 20px; font-weight: 700; }
+  .profile-hero .photo img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-hero .qr { width: 90px; height: 90px; flex-shrink: 0; }
+  .profile-hero .qr img { width: 100%; height: 100%; }
+  .profile-hero .info { flex: 1; }
+  .profile-hero h2 { margin: 0 0 4px; font-size: 18px; }
+  .profile-hero .code { font-family: monospace; color: #6b7280; font-size: 11px; }
+  .badges { margin-top: 6px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; margin-right: 4px; }
+  .badge-primary { background: {{primaryColor}}; color: #ffffff; }
+  .badge-ACTIVE { background: #dcfce7; color: #166534; }
+  .badge-INACTIVE { background: #fef3c7; color: #92400e; }
+  .badge-LEFT, .badge-SUSPENDED { background: #fee2e2; color: #991b1b; }
+  section { margin-bottom: 14px; page-break-inside: avoid; }
+  section h3 { margin: 0 0 6px; font-size: 12px; text-transform: uppercase; letter-spacing: .5px; color: {{primaryColor}}; border-bottom: 1px solid #e5e7eb; padding-bottom: 3px; }
+  .kv { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; }
+  .kv .row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #f3f4f6; }
+  .kv .row .label { color: #6b7280; }
+  .kv .row .value { font-weight: 500; text-align: right; max-width: 65%; word-wrap: break-word; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+  th, td { padding: 5px 6px; text-align: left; border-bottom: 1px solid #e5e7eb; font-size: 10px; }
+  th { background: #f3f4f6; color: #374151; font-weight: 600; text-transform: uppercase; letter-spacing: .4px; font-size: 9px; }
+  .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+  .summary { background: #f9fafb; border-left: 3px solid {{primaryColor}}; padding: 6px 10px; border-radius: 4px; }
+  .summary .label { color: #6b7280; font-size: 9px; text-transform: uppercase; }
+  .summary .value { font-size: 15px; font-weight: 700; }
+  footer { position: fixed; bottom: 6mm; left: 14mm; right: 14mm; text-align: center; color: #9ca3af; font-size: 9px; border-top: 1px solid #e5e7eb; padding-top: 4px; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>{{academyName}}</h1>
+      <p>{{academyLocation}}</p>
+    </div>
+    <div class="meta">
+      <div><strong>Student profile</strong></div>
+      <div>Generated {{generatedAt}}</div>
+    </div>
+  </header>
+
+  <div class="profile-hero">
+    <div class="photo">
+      {{#if student.photoUrl}}<img src="{{student.photoUrl}}" alt="photo" />{{else}}{{student.initials}}{{/if}}
+    </div>
+    <div class="info">
+      <h2>{{student.fullName}}</h2>
+      <div class="code">{{student.studentCode}}</div>
+      <div class="badges">
+        <span class="badge badge-primary">Belt: {{student.currentBelt}}</span>
+        <span class="badge badge-{{student.status}}">{{student.status}}</span>
+        {{#if student.branch}}<span class="badge" style="background:#eef2ff;color:#3730a3;">Branch: {{student.branch}}</span>{{/if}}
+      </div>
+    </div>
+    {{#if qrDataUrl}}
+    <div class="qr"><img src="{{qrDataUrl}}" alt="QR" /></div>
+    {{/if}}
+  </div>
+
+  <div class="summary-grid">
+    <div class="summary"><div class="label">Attendance records</div><div class="value">{{counts.attendances}}</div></div>
+    <div class="summary"><div class="label">Belt exams</div><div class="value">{{counts.beltExams}}</div></div>
+    <div class="summary"><div class="label">Certificates</div><div class="value">{{counts.certificates}}</div></div>
+    <div class="summary"><div class="label">Invoices</div><div class="value">{{counts.feeInvoices}}</div></div>
+  </div>
+
+  <section>
+    <h3>Personal information</h3>
+    <div class="kv">
+      <div class="row"><span class="label">Full name</span><span class="value">{{student.fullName}}</span></div>
+      <div class="row"><span class="label">Date of birth</span><span class="value">{{student.dob}}</span></div>
+      <div class="row"><span class="label">Gender</span><span class="value">{{student.gender}}</span></div>
+      <div class="row"><span class="label">Blood group</span><span class="value">{{student.bloodGroup}}</span></div>
+      <div class="row"><span class="label">Height</span><span class="value">{{student.height}}</span></div>
+      <div class="row"><span class="label">Weight</span><span class="value">{{student.weight}}</span></div>
+      <div class="row"><span class="label">Admission date</span><span class="value">{{student.admissionDate}}</span></div>
+      <div class="row"><span class="label">Belt since</span><span class="value">{{student.currentBeltSince}}</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Contact</h3>
+    <div class="kv">
+      <div class="row"><span class="label">Email</span><span class="value">{{student.email}}</span></div>
+      <div class="row"><span class="label">Phone</span><span class="value">{{student.phone}}</span></div>
+      <div class="row"><span class="label">Address</span><span class="value">{{student.addressLine1}}</span></div>
+      <div class="row"><span class="label">City / State</span><span class="value">{{student.cityState}}</span></div>
+      <div class="row"><span class="label">Postal code</span><span class="value">{{student.postalCode}}</span></div>
+      <div class="row"><span class="label">School</span><span class="value">{{student.school}}</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h3>Guardian &amp; emergency</h3>
+    <div class="kv">
+      <div class="row"><span class="label">Guardian name</span><span class="value">{{student.guardianName}}</span></div>
+      <div class="row"><span class="label">Guardian phone</span><span class="value">{{student.guardianPhone}}</span></div>
+      <div class="row"><span class="label">Guardian email</span><span class="value">{{student.guardianEmail}}</span></div>
+      <div class="row"><span class="label">Guardian occupation</span><span class="value">{{student.guardianOccupation}}</span></div>
+      <div class="row"><span class="label">Emergency contact</span><span class="value">{{student.emergencyContactName}}</span></div>
+      <div class="row"><span class="label">Emergency phone</span><span class="value">{{student.emergencyContactPhone}}</span></div>
+      <div class="row"><span class="label">Relation</span><span class="value">{{student.emergencyContactRelation}}</span></div>
+    </div>
+  </section>
+
+  {{#if hasMedical}}
+  <section>
+    <h3>Medical</h3>
+    <div class="kv">
+      <div class="row"><span class="label">Medical conditions</span><span class="value">{{student.medicalConditions}}</span></div>
+      <div class="row"><span class="label">Allergies</span><span class="value">{{student.allergies}}</span></div>
+      <div class="row"><span class="label">Medications</span><span class="value">{{student.medications}}</span></div>
+      <div class="row"><span class="label">Blood pressure</span><span class="value">{{student.bloodPressure}}</span></div>
+    </div>
+  </section>
+  {{/if}}
+
+  {{#if parents.length}}
+  <section>
+    <h3>Linked parents</h3>
+    <table>
+      <thead><tr><th>Name</th><th>Relation</th><th>Phone</th><th>Email</th></tr></thead>
+      <tbody>
+        {{#each parents}}
+        <tr>
+          <td>{{name}}</td>
+          <td>{{relationship}}</td>
+          <td>{{phone}}</td>
+          <td>{{email}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if batches.length}}
+  <section>
+    <h3>Batch enrolments</h3>
+    <table>
+      <thead><tr><th>Batch</th><th>Joined</th><th>Status</th></tr></thead>
+      <tbody>
+        {{#each batches}}
+        <tr>
+          <td>{{name}}</td>
+          <td>{{joinedAt}}</td>
+          <td><span class="badge badge-{{status}}">{{status}}</span></td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if beltExams.length}}
+  <section>
+    <h3>Belt exam history</h3>
+    <table>
+      <thead><tr><th>Date</th><th>From</th><th>To</th><th>Marks</th><th>Result</th></tr></thead>
+      <tbody>
+        {{#each beltExams}}
+        <tr>
+          <td>{{examDate}}</td>
+          <td>{{fromBelt}}</td>
+          <td>{{toBelt}}</td>
+          <td>{{marks}}</td>
+          <td>{{result}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if certificates.length}}
+  <section>
+    <h3>Certificates</h3>
+    <table>
+      <thead><tr><th>Number</th><th>Title</th><th>Type</th><th>Issued</th><th>Verification</th></tr></thead>
+      <tbody>
+        {{#each certificates}}
+        <tr>
+          <td>{{certificateNumber}}</td>
+          <td>{{title}}</td>
+          <td>{{type}}</td>
+          <td>{{issuedOn}}</td>
+          <td>{{verificationCode}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if invoices.length}}
+  <section>
+    <h3>Fee invoices (recent)</h3>
+    <table>
+      <thead><tr><th>Invoice</th><th>Due</th><th>Total</th><th>Balance</th><th>Status</th></tr></thead>
+      <tbody>
+        {{#each invoices}}
+        <tr>
+          <td>{{invoiceNumber}}</td>
+          <td>{{dueDate}}</td>
+          <td>{{totalFormatted}}</td>
+          <td>{{balanceFormatted}}</td>
+          <td>{{status}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if attendance.length}}
+  <section>
+    <h3>Attendance (last 15)</h3>
+    <table>
+      <thead><tr><th>Date</th><th>Status</th><th>Note</th></tr></thead>
+      <tbody>
+        {{#each attendance}}
+        <tr>
+          <td>{{date}}</td>
+          <td>{{status}}</td>
+          <td>{{note}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  {{#if history.length}}
+  <section>
+    <h3>Recent history</h3>
+    <table>
+      <thead><tr><th>When</th><th>Event</th><th>Title</th></tr></thead>
+      <tbody>
+        {{#each history}}
+        <tr>
+          <td>{{occurredAt}}</td>
+          <td>{{eventType}}</td>
+          <td>{{title}}</td>
+        </tr>
+        {{/each}}
+      </tbody>
+    </table>
+  </section>
+  {{/if}}
+
+  <footer>
+    © {{year}} {{academyName}} — Confidential student profile • Generated by TSKK Academy Management System
+  </footer>
+</body>
+</html>

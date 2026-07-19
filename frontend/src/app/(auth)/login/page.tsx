@@ -23,8 +23,12 @@ type LoginForm = z.infer<typeof loginSchema>;
 
 interface LoginResponse {
   user: AuthUser;
-  accessToken: string;
-  refreshToken: string;
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    accessTokenExpiresAt?: number;
+    refreshTokenExpiresAt?: number;
+  };
 }
 
 export default function LoginPage() {
@@ -46,7 +50,11 @@ export default function LoginPage() {
         url: '/auth/login',
         data: values,
       });
-      setSession(data);
+      setSession({
+        user: data.user,
+        accessToken: data.tokens.accessToken,
+        refreshToken: data.tokens.refreshToken,
+      });
       toast.success(`Welcome back, ${data.user.firstName}!`);
       const next = search.get('redirect') ?? routeForRole(data.user.role);
       router.replace(next);

@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { BeltLevel, CertificateType, ExamResult, Prisma } from '@prisma/client';
+import { BeltLevel, ExamResult, Prisma } from '@prisma/client';
 import { PrismaService } from '@database/prisma.service';
 import { AuditLogService } from '@common/services/audit-log.service';
 import { paginate } from '@common/dto/paginated-response.dto';
@@ -23,7 +23,11 @@ const BELT_ORDER: BeltLevel[] = [
   BeltLevel.PURPLE,
   BeltLevel.BROWN,
   BeltLevel.RED,
-  BeltLevel.BLACK,
+  BeltLevel.BLACK_1,
+  BeltLevel.BLACK_2,
+  BeltLevel.BLACK_3,
+  BeltLevel.BLACK_4,
+  BeltLevel.BLACK_5,
 ];
 
 @Injectable()
@@ -75,7 +79,7 @@ export class BeltsService {
       include: { student: true },
     });
     if (!before) throw new NotFoundException('Belt exam not found');
-    if (before.result === ExamResult.PASSED || before.result === ExamResult.FAILED) {
+    if (before.result === ExamResult.PASS || before.result === ExamResult.FAIL) {
       throw new BadRequestException('Belt exam has already been graded');
     }
 
@@ -97,26 +101,27 @@ export class BeltsService {
         include: { student: true, evaluator: true },
       });
 
-      if (input.result === ExamResult.PASSED) {
+      if (input.result === ExamResult.PASS) {
         await tx.student.update({
           where: { id: before.studentId },
-          data: { currentBelt: before.toBelt, lastBeltDate: new Date() },
+          data: { currentBelt: before.toBelt, currentBeltSince: new Date() },
         });
         await tx.studentHistory.create({
           data: {
             studentId: before.studentId,
-            type: 'BELT_PROMOTION',
+            academyId,
+            eventType: 'BELT_PROMOTION',
             title: `Promoted to ${before.toBelt} belt`,
             description: `Passed belt exam #${examId}`,
-            metadata: { fromBelt: before.fromBelt, toBelt: before.toBelt, examId },
-            createdById: req.user?.id,
+            data: { fromBelt: before.fromBelt, toBelt: before.toBelt, examId },
+            createdBy: req.user?.id ?? null,
           },
         });
       }
       return updated;
     });
 
-    if (input.result === ExamResult.PASSED && (input.issueCertificate ?? true)) {
+    if (input.result === ExamResult.PASS && (input.issueCertificate ?? true)) {
       try {
         const cert = await this.certificates.issueForBeltExam(academyId, graded.id, req);
         await this.prisma.beltExam.update({

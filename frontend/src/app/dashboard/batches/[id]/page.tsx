@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, ScrollText, Pencil, Plus, UserMinus } from 'lucide-react';
@@ -13,6 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 interface RosterEntry {
   id: string;
@@ -45,6 +46,7 @@ const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frida
 
 export default function BatchDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const qc = useQueryClient();
   const [studentSearch, setStudentSearch] = useState('');
 
@@ -102,6 +104,15 @@ export default function BatchDetailPage() {
           <Button asChild variant="outline" size="sm">
             <Link href={`/dashboard/batches/${id}/edit`}><Pencil className="h-4 w-4" /> Edit</Link>
           </Button>
+          <DeleteRowButton
+            url={`/batches/batches/${id}`}
+            entity="batch"
+            name={b.name}
+            invalidateKeys={[['batches']]}
+            onDeleted={() => router.push('/dashboard/batches')}
+            variant="outline"
+            size="sm"
+          />
         </div>
       </div>
 

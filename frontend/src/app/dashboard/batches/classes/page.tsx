@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Plus, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { apiListRequest, apiRequest, extractErrorMessage } from '@/lib/api-client';
@@ -14,6 +14,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormGrid } from '@/components/forms/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 const BELTS = [
   'WHITE', 'YELLOW', 'ORANGE', 'GREEN', 'BLUE', 'PURPLE', 'BROWN', 'RED', 'BLACK_1', 'BLACK_2', 'BLACK_3', 'BLACK_4', 'BLACK_5',
@@ -88,15 +89,6 @@ export default function ClassesPage() {
     onError: (err) => toast.error(extractErrorMessage(err, 'Could not save class')),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => apiRequest({ method: 'DELETE', url: `/classes/${id}` }),
-    onSuccess: () => {
-      toast.success('Class deleted');
-      qc.invalidateQueries({ queryKey: ['classes-list'] });
-    },
-    onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete')),
-  });
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -130,13 +122,13 @@ export default function ClassesPage() {
                 <p><span className="text-muted-foreground">Batches: </span>{c._count?.batches ?? 0}</p>
                 <div className="flex gap-2 pt-2">
                   <Button size="sm" variant="outline" onClick={() => startEdit(c)}><Pencil className="h-4 w-4" /> Edit</Button>
-                  <Button
-                    size="sm"
+                  <DeleteRowButton
+                    url={`/classes/${c.id}`}
+                    entity="class"
+                    name={c.name}
+                    invalidateKeys={[['classes-list']]}
                     variant="ghost"
-                    onClick={() => { if (window.confirm(`Delete ${c.name}?`)) remove.mutate(c.id); }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  />
                 </div>
               </CardContent>
             </Card>

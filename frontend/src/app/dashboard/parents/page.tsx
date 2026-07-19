@@ -2,6 +2,7 @@
 
 import { Users2 } from 'lucide-react';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 interface ParentRow {
   id: string;
@@ -32,6 +33,15 @@ export default function ParentsPage() {
       emptyIcon={Users2}
       emptyTitle="No parents yet"
       emptyDescription="Parents will appear here as you enrol students."
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/parents/${r.id}`}
+          entity="parent"
+          name={`${r.firstName} ${r.lastName}`}
+          invalidateKeys={[['parents']]}
+          iconOnly
+        />
+      )}
     />
   );
 }

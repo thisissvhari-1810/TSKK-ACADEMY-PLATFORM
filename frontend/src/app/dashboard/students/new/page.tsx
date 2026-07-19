@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormGrid, FormSection } from '@/components/forms/field';
+import { BranchSelect } from '@/components/forms/branch-select';
 
 const schema = z.object({
   firstName: z.string().trim().min(2, 'Required'),
@@ -133,6 +134,13 @@ export default function NewStudentPage() {
           </Field>
           <Field label="Blood group" error={errors.bloodGroup?.message}>
             <Input {...form.register('bloodGroup')} placeholder="e.g. O+" />
+          </Field>
+          <Field label="Branch" error={errors.branchId?.message} className="sm:col-span-2">
+            <BranchSelect
+              value={form.watch('branchId') || null}
+              onChange={(v) => form.setValue('branchId', v ?? '', { shouldDirty: true })}
+              placeholder="Assign to a branch (optional)"
+            />
           </Field>
         </FormGrid>
       </FormSection>

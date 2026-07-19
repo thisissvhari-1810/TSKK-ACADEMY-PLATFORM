@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ArrowLeft, Award, Calendar, IdCard, Pencil, Receipt, ShieldCheck, User } from 'lucide-react';
@@ -14,6 +14,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { StudentDownloadMenu } from '@/components/data/student-download-menu';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 type Tab = 'profile' | 'attendance' | 'fees' | 'belts' | 'certificates';
 
@@ -54,6 +56,7 @@ const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: s
 
 export default function StudentDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const router = useRouter();
   const [tab, setTab] = useState<Tab>('profile');
 
   const studentQuery = useQuery({
@@ -73,11 +76,31 @@ export default function StudentDetailPage() {
           </Link>
         </Button>
         {student && (
-          <Button asChild size="sm" variant="outline">
-            <Link href={`/dashboard/students/${student.id}/edit`}>
-              <Pencil className="h-4 w-4" /> Edit
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <StudentDownloadMenu
+              studentId={student.id}
+              studentCode={student.studentCode}
+              studentName={`${student.firstName} ${student.lastName}`}
+              size="sm"
+              variant="outline"
+              label="Download"
+            />
+            <Button asChild size="sm" variant="outline">
+              <Link href={`/dashboard/students/${student.id}/edit`}>
+                <Pencil className="h-4 w-4" /> Edit
+              </Link>
+            </Button>
+            <DeleteRowButton
+              url={`/students/${student.id}`}
+              entity="student"
+              name={`${student.firstName} ${student.lastName} (${student.studentCode})`}
+              invalidateKeys={[['students']]}
+              confirmMatch={student.studentCode}
+              onDeleted={() => router.push('/dashboard/students')}
+              variant="outline"
+              size="sm"
+            />
+          </div>
         )}
       </div>
 

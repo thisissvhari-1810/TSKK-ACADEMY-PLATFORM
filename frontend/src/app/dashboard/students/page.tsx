@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, X } from 'lucide-react';
 
-import { apiListRequest } from '@/lib/api-client';
+import { apiListRequest, apiRequest } from '@/lib/api-client';
 import { useDebouncedValue } from '@/lib/hooks';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,6 +16,9 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { EmptyState } from '@/components/data/empty-state';
 import { PaginationBar } from '@/components/data/pagination-bar';
+import { StudentDownloadMenu } from '@/components/data/student-download-menu';
+import { StudentsBulkDownloadMenu } from '@/components/data/students-bulk-download-menu';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDate } from '@/lib/utils';
 
 interface StudentRow {
@@ -31,23 +35,44 @@ interface StudentRow {
 }
 
 export default function StudentsPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const branchId = searchParams.get('branchId') ?? undefined;
+
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const pageSize = 20;
 
   const debounced = useDebouncedValue(search, 300);
 
+  const branchInfo = useQuery({
+    queryKey: ['branch', branchId],
+    queryFn: () =>
+      apiRequest<{ id: string; name: string; code: string }>({
+        method: 'GET',
+        url: `/branches/${branchId}`,
+      }),
+    enabled: !!branchId,
+  });
+
   const { data, isLoading } = useQuery({
-    queryKey: ['students', debounced, page],
+    queryKey: ['students', debounced, page, branchId],
     queryFn: () =>
       apiListRequest<StudentRow>({
         method: 'GET',
         url: '/students',
-        params: { page, pageSize, search: debounced || undefined },
+        params: { page, pageSize, search: debounced || undefined, branchId },
       }),
   });
 
   const rows = data?.items ?? [];
+
+  function clearBranchFilter() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('branchId');
+    const qs = params.toString();
+    router.push(qs ? `/dashboard/students?${qs}` : '/dashboard/students');
+  }
 
   return (
     <div className="space-y-6">
@@ -56,24 +81,40 @@ export default function StudentsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Students</h1>
           <p className="text-sm text-muted-foreground">Enrolled students across your academy.</p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/students/new">
-            <Plus className="h-4 w-4" /> Add student
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <StudentsBulkDownloadMenu filters={{ search: debounced || undefined, branchId }} />
+          <Button asChild>
+            <Link href="/dashboard/students/new">
+              <Plus className="h-4 w-4" /> Add student
+            </Link>
+          </Button>
+        </div>
       </div>
 
-      <div className="relative max-w-md">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Search by name or student code…"
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
-            setPage(1);
-          }}
-        />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative max-w-md flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Search by name or student code…"
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(1);
+            }}
+          />
+        </div>
+        {branchId && (
+          <button
+            type="button"
+            onClick={clearBranchFilter}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary transition-colors hover:bg-primary/20"
+            title="Clear branch filter"
+          >
+            Branch: {branchInfo.data?.code ?? '…'}
+            <X className="h-3 w-3" />
+          </button>
+        )}
       </div>
 
       <Card className="overflow-hidden">
@@ -135,9 +176,25 @@ export default function StudentsPage() {
                     <TableCell>{formatDate(s.admissionDate)}</TableCell>
                     <TableCell>{s.branch?.name ?? '—'}</TableCell>
                     <TableCell className="text-right">
-                      <Button asChild size="sm" variant="ghost">
-                        <Link href={`/dashboard/students/${s.id}`}>Open</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <StudentDownloadMenu
+                          studentId={s.id}
+                          studentCode={s.studentCode}
+                          studentName={`${s.firstName} ${s.lastName}`}
+                          variant="ghost"
+                          iconOnly
+                        />
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/dashboard/students/${s.id}`}>Open</Link>
+                        </Button>
+                        <DeleteRowButton
+                          url={`/students/${s.id}`}
+                          entity="student"
+                          name={`${s.firstName} ${s.lastName} (${s.studentCode})`}
+                          invalidateKeys={[['students']]}
+                          iconOnly
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

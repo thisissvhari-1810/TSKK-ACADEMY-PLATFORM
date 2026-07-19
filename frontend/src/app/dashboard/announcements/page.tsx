@@ -3,6 +3,7 @@
 import { Megaphone } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDate } from '@/lib/utils';
 
 interface AnnouncementRow {
@@ -63,6 +64,15 @@ export default function AnnouncementsPage() {
       emptyIcon={Megaphone}
       emptyTitle="No announcements yet"
       extraParams={{ activeOnly: false }}
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/announcements/${r.id}`}
+          entity="announcement"
+          name={r.title}
+          invalidateKeys={[['announcements']]}
+          iconOnly
+        />
+      )}
     />
   );
 }

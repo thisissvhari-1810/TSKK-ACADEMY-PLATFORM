@@ -5,12 +5,42 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const features = [
-  { icon: Users, title: 'Student & parent portals', body: 'Enrolment, admissions, medical, guardian info, family linking, and self-service dashboards.' },
-  { icon: QrCode, title: 'QR-based attendance', body: 'Signed HMAC QR codes for secure check-in, batch mark, holiday & leave workflows, exports.' },
-  { icon: Award, title: 'Belt exams & certificates', body: 'Schedule exams, grade with rubric, auto-issue verifiable PDF certificates with QR verification.' },
-  { icon: GraduationCap, title: 'Learning portal', body: 'Belt-gated videos, documents, assignments and submissions for structured curriculum.' },
-  { icon: BarChart3, title: 'Fees & analytics', body: 'Razorpay-integrated invoicing, receipts, reminders, revenue, dropout, and belt progression insights.' },
-  { icon: Shield, title: 'Multi-tenant SaaS', body: 'Isolated data per academy, RBAC, audit logs, subscription tiers, and enterprise-grade security.' },
+  {
+    icon: Users,
+    title: 'Student & parent portals',
+    body: 'Enrolment, admissions, medical, guardian info, family linking, and self-service dashboards.',
+    href: '/dashboard/students',
+  },
+  {
+    icon: QrCode,
+    title: 'QR-based attendance',
+    body: 'Signed HMAC QR codes for secure check-in, batch mark, holiday & leave workflows, exports.',
+    href: '/dashboard/attendance',
+  },
+  {
+    icon: Award,
+    title: 'Belt exams & certificates',
+    body: 'Schedule exams, grade with rubric, auto-issue verifiable PDF certificates with QR verification.',
+    href: '/dashboard/belt-exams',
+  },
+  {
+    icon: GraduationCap,
+    title: 'Learning portal',
+    body: 'Belt-gated videos, documents, assignments and submissions for structured curriculum.',
+    href: '/dashboard/learning',
+  },
+  {
+    icon: BarChart3,
+    title: 'Fees & analytics',
+    body: 'Razorpay-integrated invoicing, receipts, reminders, revenue, dropout, and belt progression insights.',
+    href: '/dashboard/fees',
+  },
+  {
+    icon: Shield,
+    title: 'Multi-tenant SaaS',
+    body: 'Isolated data per academy, RBAC, audit logs, subscription tiers, and enterprise-grade security.',
+    href: '/dashboard',
+  },
 ];
 
 export default function LandingPage() {
@@ -65,17 +95,34 @@ export default function LandingPage() {
       </section>
 
       <section className="mx-auto max-w-7xl px-6 pb-24">
+        <div className="mb-6 flex items-end justify-between">
+          <div>
+            <h2 className="font-display text-2xl font-semibold">Explore the platform</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Click any card to open that section. You&apos;ll be asked to sign in first.
+            </p>
+          </div>
+        </div>
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, title, body }) => (
-            <Card key={title} className="border-primary/10 bg-card/60 backdrop-blur">
-              <CardHeader>
-                <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary">
-                  <Icon className="h-5 w-5" />
-                </div>
-                <CardTitle className="text-lg">{title}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm text-muted-foreground">{body}</CardContent>
-            </Card>
+          {features.map(({ icon: Icon, title, body, href }) => (
+            <Link
+              key={title}
+              href={href}
+              className="group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-xl"
+            >
+              <Card className="h-full border-primary/10 bg-card/60 backdrop-blur transition-all group-hover:-translate-y-0.5 group-hover:border-primary/40 group-hover:shadow-lg">
+                <CardHeader>
+                  <div className="mb-3 grid h-10 w-10 place-items-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
+                    <Icon className="h-5 w-5" />
+                  </div>
+                  <CardTitle className="flex items-center justify-between text-lg">
+                    <span>{title}</span>
+                    <ArrowRight className="h-4 w-4 opacity-0 transition-all group-hover:translate-x-0.5 group-hover:opacity-100" />
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm text-muted-foreground">{body}</CardContent>
+              </Card>
+            </Link>
           ))}
         </div>
       </section>

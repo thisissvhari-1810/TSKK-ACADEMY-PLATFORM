@@ -60,7 +60,7 @@ export class ReportsService {
         where: { academyId, result: 'PENDING', examDate: { gte: now, lte: new Date(now.getTime() + 30 * 86400_000) } },
       }),
       this.prisma.beltExam.count({
-        where: { academyId, result: 'PASSED', createdAt: { gte: startOfMonth } },
+        where: { academyId, result: 'PASS', createdAt: { gte: startOfMonth } },
       }),
     ]);
 
@@ -161,15 +161,15 @@ export class ReportsService {
     });
     const passRates = await this.prisma.beltExam.groupBy({
       by: ['toBelt', 'result'],
-      where: { academyId, result: { in: ['PASSED', 'FAILED'] } },
+      where: { academyId, result: { in: ['PASS', 'FAIL'] } },
       _count: { _all: true },
     });
     const map = new Map<string, { passed: number; failed: number }>();
     for (const row of passRates) {
       const key = row.toBelt;
       const entry = map.get(key) ?? { passed: 0, failed: 0 };
-      if (row.result === 'PASSED') entry.passed = row._count._all;
-      if (row.result === 'FAILED') entry.failed = row._count._all;
+      if (row.result === 'PASS') entry.passed = row._count._all;
+      if (row.result === 'FAIL') entry.failed = row._count._all;
       map.set(key, entry);
     }
     return {

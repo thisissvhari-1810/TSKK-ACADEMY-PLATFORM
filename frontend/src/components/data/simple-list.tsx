@@ -33,6 +33,9 @@ interface Props<T> {
   emptyIcon?: LucideIcon;
   emptyDescription?: string;
   extraParams?: Record<string, string | number | boolean | undefined>;
+  /** Right-aligned per-row actions column (e.g. edit/delete buttons). */
+  rowActions?: (row: T) => React.ReactNode;
+  rowActionsHeader?: string;
 }
 
 export function SimpleListPage<T extends { id: string }>({
@@ -47,6 +50,8 @@ export function SimpleListPage<T extends { id: string }>({
   emptyIcon,
   emptyDescription,
   extraParams,
+  rowActions,
+  rowActionsHeader = '',
 }: Props<T>) {
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
@@ -108,6 +113,9 @@ export function SimpleListPage<T extends { id: string }>({
                       {col.header}
                     </TableHead>
                   ))}
+                  {rowActions && (
+                    <TableHead className="text-right">{rowActionsHeader}</TableHead>
+                  )}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -118,6 +126,11 @@ export function SimpleListPage<T extends { id: string }>({
                         {col.render(row)}
                       </TableCell>
                     ))}
+                    {rowActions && (
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">{rowActions(row)}</div>
+                      </TableCell>
+                    )}
                   </TableRow>
                 ))}
               </TableBody>

@@ -3,6 +3,7 @@
 import { CalendarClock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDateTime } from '@/lib/utils';
 
 interface EventRow {
@@ -55,6 +56,15 @@ export default function EventsPage() {
       columns={columns}
       emptyIcon={CalendarClock}
       emptyTitle="No events yet"
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/events/${r.id}`}
+          entity="event"
+          name={r.title}
+          invalidateKeys={[['events']]}
+          iconOnly
+        />
+      )}
     />
   );
 }

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Pencil, Plus, Power, Trash2 } from 'lucide-react';
+import { ArrowLeft, Pencil, Plus, Power } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { apiListRequest, apiRequest, extractErrorMessage } from '@/lib/api-client';
@@ -15,6 +15,7 @@ import { Input, Textarea } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormGrid } from '@/components/forms/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 const FEE_TYPES = ['ADMISSION', 'MONTHLY', 'QUARTERLY', 'HALF_YEARLY', 'YEARLY', 'EVENT', 'EXAM', 'UNIFORM', 'EQUIPMENT', 'OTHER'];
 
@@ -93,15 +94,6 @@ export default function FeePlansPage() {
     onError: (err) => toast.error(extractErrorMessage(err, 'Could not save fee plan')),
   });
 
-  const remove = useMutation({
-    mutationFn: (id: string) => apiRequest({ method: 'DELETE', url: `/fees/plans/${id}` }),
-    onSuccess: () => {
-      toast.success('Fee plan deleted');
-      qc.invalidateQueries({ queryKey: ['fee-plans'] });
-    },
-    onError: (err) => toast.error(extractErrorMessage(err, 'Could not delete')),
-  });
-
   const toggle = useMutation({
     mutationFn: (p: FeePlan) =>
       apiRequest({ method: 'PATCH', url: `/fees/plans/${p.id}`, data: { isActive: !p.isActive } }),
@@ -163,18 +155,16 @@ export default function FeePlansPage() {
                   <Button size="sm" variant="outline" onClick={() => startEdit(p)}>
                     <Pencil className="h-4 w-4" /> Edit
                   </Button>
-                  <Button size="sm" variant="ghost" onClick={() => toggle.mutate(p)}>
+                  <Button size="sm" variant="ghost" onClick={() => toggle.mutate(p)} title={p.isActive ? 'Deactivate' : 'Activate'}>
                     <Power className="h-4 w-4" />
                   </Button>
-                  <Button
-                    size="sm"
+                  <DeleteRowButton
+                    url={`/fees/plans/${p.id}`}
+                    entity="fee plan"
+                    name={p.name}
+                    invalidateKeys={[['fee-plans']]}
                     variant="ghost"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${p.name}?`)) remove.mutate(p.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  />
                 </div>
               </CardContent>
             </Card>

@@ -75,7 +75,7 @@ export class CertificatesService {
       include: { student: true },
     });
     if (!exam) throw new NotFoundException('Belt exam not found');
-    if (exam.result !== 'PASSED') {
+    if (exam.result !== 'PASS') {
       throw new BadRequestException('Only passed exams can receive belt promotion certificates');
     }
     return this.issue(
@@ -151,8 +151,6 @@ export class CertificatesService {
             contactPhone: true,
             logoUrl: true,
             primaryColor: true,
-            secondaryColor: true,
-            tagline: true,
           },
         },
       },
@@ -181,14 +179,14 @@ export class CertificatesService {
         },
         academy: {
           name: cert.academy.name,
-          tagline: cert.academy.tagline,
+          tagline: null,
           address: [cert.academy.addressLine1, cert.academy.city, cert.academy.state].filter(Boolean).join(', '),
           contactEmail: cert.academy.contactEmail,
           contactPhone: cert.academy.contactPhone,
           logoUrl: cert.academy.logoUrl,
         },
         primaryColor: cert.academy.primaryColor ?? '#B91C1C',
-        secondaryColor: cert.academy.secondaryColor ?? '#F59E0B',
+        secondaryColor: '#F59E0B',
         qrDataUrl,
       },
       pdfOptions: {
@@ -237,8 +235,6 @@ export class CertificatesService {
             contactPhone: true,
             logoUrl: true,
             primaryColor: true,
-            secondaryColor: true,
-            tagline: true,
           },
         },
       },
@@ -264,14 +260,14 @@ export class CertificatesService {
         },
         academy: {
           name: full.academy.name,
-          tagline: full.academy.tagline,
+          tagline: null,
           address: [full.academy.addressLine1, full.academy.city, full.academy.state].filter(Boolean).join(', '),
           contactEmail: full.academy.contactEmail,
           contactPhone: full.academy.contactPhone,
           logoUrl: full.academy.logoUrl,
         },
         primaryColor: full.academy.primaryColor ?? '#B91C1C',
-        secondaryColor: full.academy.secondaryColor ?? '#F59E0B',
+        secondaryColor: '#F59E0B',
         qrDataUrl,
       },
       pdfOptions: {
@@ -289,7 +285,7 @@ export class CertificatesService {
       where: { verificationCode },
       include: {
         student: { select: { firstName: true, lastName: true, studentCode: true, currentBelt: true } },
-        academy: { select: { name: true, tagline: true, logoUrl: true, city: true, state: true } },
+        academy: { select: { name: true, logoUrl: true, city: true, state: true } },
       },
     });
     if (!cert) return { valid: false, reason: 'NOT_FOUND' };

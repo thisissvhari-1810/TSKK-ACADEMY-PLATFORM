@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/data/empty-state';
 import { PaginationBar } from '@/components/data/pagination-bar';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDateTime } from '@/lib/utils';
 
 interface AttendanceRow {
@@ -140,6 +141,7 @@ export default function AttendancePage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Check-in</TableHead>
+                  <TableHead className="text-right"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -165,6 +167,15 @@ export default function AttendancePage() {
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {r.checkInAt ? formatDateTime(r.checkInAt) : '—'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DeleteRowButton
+                        url={`/attendance/${r.id}`}
+                        entity="attendance record"
+                        name={`${r.student.firstName} ${r.student.lastName} · ${formatDateTime(r.date)}`}
+                        invalidateKeys={[['attendance']]}
+                        iconOnly
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

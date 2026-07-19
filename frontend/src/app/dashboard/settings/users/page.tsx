@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ArrowLeft, Ban, CheckCircle2, Plus, Search, Trash2, UserCog } from 'lucide-react';
+import { ArrowLeft, Ban, CheckCircle2, Plus, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { apiListRequest, apiRequest, extractErrorMessage } from '@/lib/api-client';
@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Field, FormGrid } from '@/components/forms/field';
 import { Skeleton } from '@/components/ui/skeleton';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 
 const ROLES = ['ACADEMY_ADMIN', 'INSTRUCTOR', 'RECEPTIONIST', 'ACCOUNTANT', 'PARENT', 'STUDENT'];
 
@@ -78,15 +79,6 @@ export default function UsersManagementPage() {
     mutationFn: (payload: { id: string; status: string }) =>
       apiRequest({ method: 'POST', url: `/users/${payload.id}/status`, data: { status: payload.status } }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['users'] });
-    },
-    onError: (err) => toast.error(extractErrorMessage(err)),
-  });
-
-  const remove = useMutation({
-    mutationFn: (id: string) => apiRequest({ method: 'DELETE', url: `/users/${id}` }),
-    onSuccess: () => {
-      toast.success('User deleted');
       qc.invalidateQueries({ queryKey: ['users'] });
     },
     onError: (err) => toast.error(extractErrorMessage(err)),
@@ -194,15 +186,13 @@ export default function UsersManagementPage() {
                       <CheckCircle2 className="h-4 w-4" />
                     </Button>
                   )}
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => {
-                      if (window.confirm(`Delete ${u.firstName} ${u.lastName}?`)) remove.mutate(u.id);
-                    }}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <DeleteRowButton
+                    url={`/users/${u.id}`}
+                    entity="user"
+                    name={`${u.firstName} ${u.lastName} (${u.email})`}
+                    invalidateKeys={[['users']]}
+                    iconOnly
+                  />
                 </div>
               </div>
             ))}

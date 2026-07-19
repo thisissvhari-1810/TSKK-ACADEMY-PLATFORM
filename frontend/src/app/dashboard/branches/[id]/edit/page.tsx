@@ -17,13 +17,15 @@ import { Field, FormGrid, FormSection } from '@/components/forms/field';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const schema = z.object({
-  name: z.string().min(1),
-  code: z.string().min(1),
-  addressLine1: z.string().min(1),
-  city: z.string().min(1),
-  state: z.string().min(1),
-  postalCode: z.string().optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  name: z.string().trim().min(2),
+  code: z.string().trim().min(1),
+  addressLine1: z.string().trim().optional().or(z.literal('')),
+  city: z.string().trim().optional().or(z.literal('')),
+  state: z.string().trim().optional().or(z.literal('')),
+  postalCode: z.string().trim().optional().or(z.literal('')),
+  phone: z.string().trim().optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email').optional().or(z.literal('')),
+  isActive: z.boolean().optional(),
 });
 type FormValues = z.infer<typeof schema>;
 
@@ -76,13 +78,33 @@ export default function EditBranchPage() {
 
       <FormSection title="Branch details">
         <FormGrid>
-          <Field label="Name" required><Input {...form.register('name')} /></Field>
-          <Field label="Code" required><Input {...form.register('code')} /></Field>
-          <Field label="Address" required className="sm:col-span-2"><Input {...form.register('addressLine1')} /></Field>
-          <Field label="City" required><Input {...form.register('city')} /></Field>
-          <Field label="State" required><Input {...form.register('state')} /></Field>
+          <Field label="Name" required error={form.formState.errors.name?.message}>
+            <Input {...form.register('name')} />
+          </Field>
+          <Field label="Code" required error={form.formState.errors.code?.message}>
+            <Input {...form.register('code')} />
+          </Field>
+          <Field label="Address" className="sm:col-span-2">
+            <Input {...form.register('addressLine1')} />
+          </Field>
+          <Field label="City"><Input {...form.register('city')} /></Field>
+          <Field label="State"><Input {...form.register('state')} /></Field>
           <Field label="Postal code"><Input {...form.register('postalCode')} /></Field>
           <Field label="Phone"><Input {...form.register('phone')} /></Field>
+          <Field label="Email" error={form.formState.errors.email?.message} className="sm:col-span-2">
+            <Input type="email" {...form.register('email')} />
+          </Field>
+          <Field label="Status" className="sm:col-span-2">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                className="h-4 w-4 rounded border-input"
+                checked={form.watch('isActive') !== false}
+                onChange={(e) => form.setValue('isActive', e.target.checked, { shouldDirty: true })}
+              />
+              <span>Active (uncheck to disable this branch)</span>
+            </label>
+          </Field>
         </FormGrid>
       </FormSection>
     </form>

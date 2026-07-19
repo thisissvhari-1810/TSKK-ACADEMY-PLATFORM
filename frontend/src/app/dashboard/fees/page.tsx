@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { EmptyState } from '@/components/data/empty-state';
 import { PaginationBar } from '@/components/data/pagination-bar';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatDate, formatINR } from '@/lib/utils';
 
 interface InvoiceRow {
@@ -155,9 +156,20 @@ export default function FeesPage() {
                       <Badge variant={STATUS_VARIANT[inv.status]}>{inv.status}</Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button asChild size="sm" variant="ghost">
-                        <Link href={`/dashboard/fees/invoices/${inv.id}`}>Open</Link>
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button asChild size="sm" variant="ghost">
+                          <Link href={`/dashboard/fees/${inv.id}`}>Open</Link>
+                        </Button>
+                        <DeleteRowButton
+                          url={`/fees/invoices/${inv.id}`}
+                          entity="invoice"
+                          name={`${inv.invoiceNumber} · ${inv.student.firstName} ${inv.student.lastName}`}
+                          invalidateKeys={[['invoices']]}
+                          iconOnly
+                          disabled={inv.status === 'PAID' || inv.status === 'PARTIAL'}
+                          disabledReason="Cannot void an invoice with payments applied"
+                        />
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}

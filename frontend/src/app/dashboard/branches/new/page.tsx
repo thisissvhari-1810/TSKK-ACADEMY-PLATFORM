@@ -15,19 +15,28 @@ import { Input } from '@/components/ui/input';
 import { Field, FormGrid, FormSection } from '@/components/forms/field';
 
 const schema = z.object({
-  name: z.string().min(2),
-  code: z.string().min(2).max(16),
-  addressLine1: z.string().min(3),
-  city: z.string().min(2),
-  state: z.string().min(2),
-  postalCode: z.string().optional().or(z.literal('')),
-  phone: z.string().optional().or(z.literal('')),
+  name: z.string().trim().min(2, 'Name must be at least 2 characters'),
+  code: z
+    .string()
+    .trim()
+    .min(1)
+    .max(32)
+    .regex(/^[A-Za-z0-9-_.]+$/, 'Only letters, numbers, dash, underscore, dot'),
+  addressLine1: z.string().trim().optional().or(z.literal('')),
+  city: z.string().trim().optional().or(z.literal('')),
+  state: z.string().trim().optional().or(z.literal('')),
+  postalCode: z.string().trim().optional().or(z.literal('')),
+  phone: z.string().trim().optional().or(z.literal('')),
+  email: z.string().trim().email('Invalid email').optional().or(z.literal('')),
 });
 type FormValues = z.infer<typeof schema>;
 
 export default function NewBranchPage() {
   const router = useRouter();
-  const form = useForm<FormValues>({ resolver: zodResolver(schema) });
+  const form = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { state: 'Tamil Nadu' },
+  });
   const errors = form.formState.errors;
 
   const create = useMutation({
@@ -36,9 +45,14 @@ export default function NewBranchPage() {
         method: 'POST',
         url: '/branches',
         data: {
-          ...v,
+          name: v.name,
+          code: v.code,
+          addressLine1: v.addressLine1 || undefined,
+          city: v.city || undefined,
+          state: v.state || undefined,
           postalCode: v.postalCode || undefined,
           phone: v.phone || undefined,
+          email: v.email || undefined,
         },
       }),
     onSuccess: () => {
@@ -64,28 +78,31 @@ export default function NewBranchPage() {
         </Button>
       </div>
 
-      <FormSection title="Branch details">
+      <FormSection title="Branch details" description="Only the name and code are required. Everything else is optional.">
         <FormGrid>
           <Field label="Name" required error={errors.name?.message}>
-            <Input {...form.register('name')} placeholder="e.g. Chennai - T Nagar" />
+            <Input {...form.register('name')} placeholder="e.g. Medavakkam Branch" />
           </Field>
           <Field label="Code" required error={errors.code?.message}>
-            <Input {...form.register('code')} placeholder="CHN-TN" />
+            <Input {...form.register('code')} placeholder="e.g. MEDAVAKKAM" />
           </Field>
-          <Field label="Address" required error={errors.addressLine1?.message} className="sm:col-span-2">
-            <Input {...form.register('addressLine1')} />
+          <Field label="Address (optional)" error={errors.addressLine1?.message} className="sm:col-span-2">
+            <Input {...form.register('addressLine1')} placeholder="Street / area" />
           </Field>
-          <Field label="City" required error={errors.city?.message}>
-            <Input {...form.register('city')} />
+          <Field label="City (optional)" error={errors.city?.message}>
+            <Input {...form.register('city')} placeholder="e.g. Chennai" />
           </Field>
-          <Field label="State" required error={errors.state?.message}>
+          <Field label="State (optional)" error={errors.state?.message}>
             <Input {...form.register('state')} />
           </Field>
-          <Field label="Postal code">
-            <Input {...form.register('postalCode')} />
+          <Field label="Postal code (optional)">
+            <Input {...form.register('postalCode')} placeholder="e.g. 600100" />
           </Field>
-          <Field label="Phone">
-            <Input {...form.register('phone')} />
+          <Field label="Phone (optional)">
+            <Input {...form.register('phone')} placeholder="+91 98xxxxxxxx" />
+          </Field>
+          <Field label="Email (optional)" error={errors.email?.message} className="sm:col-span-2">
+            <Input type="email" {...form.register('email')} placeholder="branch@academy.in" />
           </Field>
         </FormGrid>
       </FormSection>

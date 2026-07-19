@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { SimpleListPage, type Column } from '@/components/data/simple-list';
+import { DeleteRowButton } from '@/components/data/delete-row-button';
 import { formatINR } from '@/lib/utils';
 
 interface ItemRow {
@@ -58,6 +59,15 @@ export default function InventoryPage() {
         </Button>
       }
       extraParams={{ activeOnly: false }}
+      rowActions={(r) => (
+        <DeleteRowButton
+          url={`/inventory/items/${r.id}`}
+          entity="item"
+          name={`${r.name} (${r.sku})`}
+          invalidateKeys={[['inventory-items']]}
+          iconOnly
+        />
+      )}
     />
   );
 }
