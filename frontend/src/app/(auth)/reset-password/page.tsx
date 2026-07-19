@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { toast } from 'sonner';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 
 import { apiRequest, extractErrorMessage } from '@/lib/api-client';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,14 @@ const schema = z
 type FormValues = z.infer<typeof schema>;
 
 export default function ResetPasswordPage() {
+  return (
+    <Suspense fallback={<div className="text-sm text-muted-foreground">Loading…</div>}>
+      <ResetPasswordForm />
+    </Suspense>
+  );
+}
+
+function ResetPasswordForm() {
   const router = useRouter();
   const search = useSearchParams();
   const token = search.get('token') ?? '';

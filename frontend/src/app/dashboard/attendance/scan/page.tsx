@@ -52,17 +52,25 @@ export default function AttendanceScanPage() {
     } catch (err) {
       const message = extractErrorMessage(err);
       toast.error(message);
-      setRecent((r) => [
-        {
-          time: new Date(),
-          result: {
-            attendance: { id: '', status: 'PRESENT', checkInAt: new Date().toISOString(), minutesLate: null },
-            student: { id: '', code: payload.slice(0, 20), firstName: 'Unknown', lastName: '' },
+      const failed: { time: Date; result: ScanResult; error?: string } = {
+        time: new Date(),
+        result: {
+          attendance: {
+            id: '',
+            status: 'PRESENT',
+            checkInAt: new Date().toISOString(),
+            minutesLate: null,
           },
-          error: message,
+          student: {
+            id: '',
+            code: payload.slice(0, 20),
+            firstName: 'Unknown',
+            lastName: '',
+          },
         },
-        ...r,
-      ].slice(0, 8));
+        error: message,
+      };
+      setRecent((r) => [failed, ...r].slice(0, 8));
     } finally {
       setSubmitting(false);
       setTimeout(() => setLastPayload(null), 2500);

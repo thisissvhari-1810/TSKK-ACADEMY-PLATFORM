@@ -19,6 +19,7 @@ interface EventDetail {
   slug: string;
   description: string;
   type: string;
+  audience?: string;
   status: string;
   venue: string;
   addressLine1?: string;
@@ -89,7 +90,7 @@ export default function EventDetailPage() {
               <h1 className="text-2xl font-bold">{e.title}</h1>
               <p className="mt-1 text-sm text-muted-foreground">
                 <Badge variant="muted">{e.type}</Badge>{' '}
-                <Badge variant="muted">{e.audience}</Badge>{' '}
+                {e.audience && <Badge variant="muted">{e.audience}</Badge>}{' '}
                 <Badge variant={e.status === 'PUBLISHED' ? 'success' : 'warning'}>{e.status}</Badge>
               </p>
             </div>

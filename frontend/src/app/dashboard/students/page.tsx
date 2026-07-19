@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Plus, Search, X } from 'lucide-react';
 
@@ -35,6 +35,14 @@ interface StudentRow {
 }
 
 export default function StudentsPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-32 w-full" />}>
+      <StudentsPageInner />
+    </Suspense>
+  );
+}
+
+function StudentsPageInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const branchId = searchParams.get('branchId') ?? undefined;
