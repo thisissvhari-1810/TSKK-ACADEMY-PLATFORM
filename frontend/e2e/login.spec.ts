@@ -5,6 +5,8 @@ import { test, expect } from '@playwright/test';
 // no admin credentials are supplied via env — this keeps CI green in
 // front-end-only runs.
 
+
+
 const email = process.env.E2E_ADMIN_EMAIL;
 const password = process.env.E2E_ADMIN_PASSWORD;
 
